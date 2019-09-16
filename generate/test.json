@@ -1,0 +1,77 @@
+{
+    "openrpc": "1.0.0",
+    "info": {
+      "version": "1.0.0",
+      "title": "JSON-RPC",
+      "description": "This is a test OpenRPC spec"
+    },
+    "methods": [
+      {
+        "name": "service_method",
+        "description": "returns the method of this service",
+        "summary": "current service",
+        "params": [
+          {
+            "name": "param1",
+            "description": "this is a desc",
+            "schema": {
+              "title": "param1",
+              "type": "string",
+              "pattern": "^0x[a-fA-F\\d]+$"
+            }
+          },
+          {
+            "name": "param2",
+            "description": "this is a desc",
+            "schema": {
+              "$ref": "#/components/schemas/Param2"
+            }
+          },
+          {
+            "$ref": "#/components/schemas/Param3"
+          },
+          {
+            "name": "param4",
+            "description": "this is a desc",
+            "schema": {
+              "type": "object",
+              "title": "param4",
+              "description": "this is an object",
+              "properties": {
+                "foo": {
+                  "description": "this is a foo",
+                  "title": "foo",
+                  "type": "string"
+                },
+                "bar": {
+                  "description": "this is a bar",
+                  "title": "bar",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "result": {
+          "name": "data",
+          "description": "the requested data",
+          "schema": {
+            "title": "data",
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "components": {
+      "schemas": {
+        "Param2": {
+          "title": "param2",
+          "type": "string"
+        },
+        "Param3": {
+          "title": "param3",
+          "type": "string"
+        }
+      }
+    }
+  }

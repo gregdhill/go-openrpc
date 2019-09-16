@@ -1,0 +1,14 @@
+package generate
+
+{{- range (getObjects .Objects) }}
+{{ printf "type %s struct {" .Name }}
+{{- range (getFields .Fields) }}
+{{ maybeFieldComment .Desc }}
+{{- if (eq .Name .Type) }}
+{{ printf "%s" .Name }}
+{{- else }}
+{{ printf "%s %s" .Name .Type }}
+{{- end }}
+{{- end }}
+{{ printf "}" }}
+{{- end }}
