@@ -60,6 +60,20 @@ func run() error {
 		return err
 	}
 
+	if err = generate.WriteFile(box, "example", "main", openrpc); err != nil {
+		return err
+	} else {
+		// HACK
+		if err := os.MkdirAll("example/", os.ModePerm); err != nil {
+			return err
+		}
+		if err := os.Rename("main/example.go", "example/example.go"); err != nil {
+			return err
+		}
+		if err := os.RemoveAll("main/"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
