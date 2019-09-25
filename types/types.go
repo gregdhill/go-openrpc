@@ -37,7 +37,7 @@ type Server struct {
 	URL         string                    `json:"url"`
 	Summary     string                    `json:"summary"`
 	Description string                    `json:"description"`
-	Variables   map[string]ServerVariable `json:"variables`
+	Variables   map[string]ServerVariable `json:"variables"`
 }
 
 type ExternalDocs struct {
