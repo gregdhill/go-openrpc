@@ -16,11 +16,13 @@ import (
 var (
 	pkgDir   string
 	specFile string
+	cliGen   bool
 )
 
 func init() {
 	flag.StringVar(&pkgDir, "dir", "rpc", "set the target directory")
 	flag.StringVar(&specFile, "spec", "", "the openrpc compliant spec")
+	flag.BoolVar(&cliGen, "cli", false, "Toggle CLI program generation")
 }
 
 func readSpec(file string) (*types.OpenRPCSpec1, error) {
@@ -58,6 +60,17 @@ func run() error {
 
 	if err = generate.WriteFile(box, "types", pkgDir, openrpc); err != nil {
 		return err
+	}
+
+	if cliGen {
+
+		if err = generate.WriteFile(box, "cli", "main", openrpc); err != nil {
+			return err
+		}
+
+		if err = generate.WriteFile(box, "cli_cmd", "cmd", openrpc); err != nil {
+			return err
+		}
 	}
 
 	return nil
