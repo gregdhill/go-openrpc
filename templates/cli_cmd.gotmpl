@@ -18,6 +18,8 @@ limitations under the License.
 package cmd
 
 import (
+    "strconv"
+    "strings"
     "errors"
   "fmt"
   "log"
@@ -59,51 +61,50 @@ to quickly create a Cobra application.`,
 
 var errJSONRPC = errors.New("json rpc did return error")
 func makeJSONRPCRequest(name string, params []byte) ([]byte, error) {
+    reqBody := rpct.RPCRequest{
+        JSONRPC: "2.0",
+        Method: name,
+        Params: params,
+        ID: 1, // TODO
+    }
 
-            reqBody := rpct.RPCRequest{
-                JSONRPC: "2.0",
-                Method: name,
-                Params: params,
-                ID: 1, // TODO
-            }
+    reqBod, err := json.Marshal(reqBody)
+    if err != nil {
+        return nil, err
+    }
 
-            reqBod, err := json.Marshal(reqBody)
-            if err != nil {
-                return nil, err
-            }
+    req, err := http.NewRequest("POST", rpcAddr, bytes.NewBuffer(reqBod))
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("Content-Type", "application/json")
 
-            req, err := http.NewRequest("POST", rpcAddr, bytes.NewBuffer(reqBod))
-            if err != nil {
-                return nil, err
-            }
-            req.Header.Set("Content-Type", "application/json")
+    client := &http.Client{}
 
-            client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close() 
 
-            resp, err := client.Do(req)
-            if err != nil {
-                return nil, err
-            }
-            defer resp.Body.Close() 
+    body, _ := ioutil.ReadAll(resp.Body)
+    
+    if resp.StatusCode != 200 {
+        err = errors.New("request errored")
+        return body, err
+    }
 
-            body, _ := ioutil.ReadAll(resp.Body)
-            
-            if resp.StatusCode != 200 {
-                err = errors.New("request errored")
-                return body, err
-            }
+    errResponse := rpct.RPCErrorResponse{}
+    err = json.Unmarshal(body, &errResponse)
+    if err != nil {
+        return body, err
+    }
+    if errResponse.Error != nil {
+        // Did get error response from server.
+        return body, errJSONRPC
+    }
 
-            errResponse := rpct.RPCErrorResponse{}
-            err = json.Unmarshal(body, &errResponse)
-            if err != nil {
-                return body, err
-            }
-            if errResponse.Error != nil {
-                // Did get error response from server.
-                return body, errJSONRPC
-            }
-
-            return body, nil
+    return body, nil
 }
 
 func handleJSONRPCResponse(body []byte, err error) {
@@ -117,16 +118,75 @@ func handleJSONRPCResponse(body []byte, err error) {
     os.Exit(2)
 }
 
+// marshalParams returns a JSONified map or array
+// If any of the values contain an "=", then a map will
+// be used.
+//   When using a map, if not ALL values contain an =,
+//   then an error will be thrown.
+func marshalParams(params []string) ([]byte, error) {
+        
+    paramsMapT := make(map[string]interface{})
+    paramsArrayT := []interface{}{}
+
+    if len(params) == 0 {
+        return json.Marshal(paramsArrayT)
+    }
+
+    useArray := true 
+
+    for _, a := range params {
+        if strings.Contains(a, "=") {
+            useArray = false
+        }
+    }
+    for _, a := range params {
+        if !useArray && !strings.Contains(a, "=") {
+            return nil, errors.New("invalid params - when using '=' syntax for an object parameter, all values must be of the format key=value")
+        }
+
+        var key, val string
+        if !useArray {
+            kv := strings.Split(a, "=")
+            key, val = kv[0], kv[1]
+        } else {
+            val = a
+        }
+
+        if vint, err := strconv.Atoi(val); err == nil {
+            paramsMapT[key] = vint
+            paramsArrayT = append(paramsArrayT, vint)
+        } else if vbool, err := strconv.ParseBool(val); err == nil {
+            paramsMapT[key] = vbool
+            paramsArrayT = append(paramsArrayT, vbool)
+        } else {
+            paramsMapT[key] = val
+            paramsArrayT = append(paramsArrayT, val)
+        }
+    }
+
+
+    /*
+    if verbose {
+        log.Println("request", )
+    }
+    */
+
+    if useArray {
+        return json.Marshal(paramsArrayT)
+    }
+    return json.Marshal(paramsMapT)
+}
+
 {{- range .Methods }}
 
-{{ $this := . }}
+{{- $paramsLength := .Params | lengthOf }}
 
 var {{ .Name | camelCase | lowerFirst }}Cmd = &cobra.Command{
     Use: "{{.Name}}",
     Short: "{{.Summary}}",
     Long: `{{.Description}}
 
-Params:
+Params: ({{ $paramsLength }})
 - TODO 
 
 
@@ -144,7 +204,6 @@ For more information see {{- printf "%s" .ExternalDocs.Description }}: {{- print
             log.Println("WARNING: This method ({{.Name}}) is deprecated. Use at your own risk.")
         }
 
-        {{- $paramsLength := .Params | lengthOf }}
         // len params: {{ $paramsLength }}
     /*
 
@@ -153,25 +212,18 @@ For more information see {{- printf "%s" .ExternalDocs.Description }}: {{- print
         {{ end }}
 
     */
+    /*
         if len(args) != {{$paramsLength}} {
             log.Fatalf("wrong number of arguments, want: %d, got: %d", {{$paramsLength}}, len(args))
         }
+    */
 
-        paramsArrayT := []interface{}{}
-        
-        if len(args) == 0 {
-            paramsArrayBytes, err := json.Marshal(paramsArrayT)
-            if err != nil {
-                log.Fatalln(err)
-            }
-
-            body, err := makeJSONRPCRequest("{{.Name}}", paramsArrayBytes)
-            handleJSONRPCResponse(body, err)
+        params, err := marshalParams(args)
+        if err != nil {
+            log.Fatalln(err)
         }
-
-        for i, a := range args {
-            fmt.Println("arg:", "i=", i, "val=", a)
-        }
+        body, err := makeJSONRPCRequest("{{.Name}}", params)
+        handleJSONRPCResponse(body, err)
     },
 }
 
