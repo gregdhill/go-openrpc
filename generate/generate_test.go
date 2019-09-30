@@ -62,7 +62,13 @@ func TestGenerate(t *testing.T) {
 
 	t.Run("Should be deterministic", func(t *testing.T) {
 		for i := 0; i < 20; i++ {
-			require.Equal(t, exp, tmpl(t))
+			got := tmpl(t)
+			if exp == got {
+				t.Log("same same")
+				continue
+			}
+			t.Log("but different")
+			require.Equal(t, exp, got)
 		}
 	})
 }
