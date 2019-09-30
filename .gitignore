@@ -1,5 +1,6 @@
 test/
 example/
 rpc/
+main/
 packrd/
 main-packr.go
