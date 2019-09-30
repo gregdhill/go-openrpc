@@ -8,3 +8,7 @@ This package contains a golang implementation of the OpenRPC specification. It c
 JSON document, but please be aware that the tool is still in its infancy and may not generate correctly. If you happen across any bugs or
 realise any possible improvements, please consider submitting a PR!
 
+```
+go test ./...
+go run example/example-proxy-server.go
+```
