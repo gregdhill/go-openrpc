@@ -5,6 +5,10 @@ import (
 	"unicode"
 )
 
+func UnsnakeCase(name string) string {
+	return strings.Replace(name, "_", "", -1)
+}
+
 func CamelCase(name string) string {
 	in := strings.Split(name, "_")
 	if len(in) == 0 {
@@ -22,6 +26,10 @@ func LowerFirst(name string) string {
 		return string(unicode.ToLower(v)) + name[i+1:]
 	}
 	return ""
+}
+
+func LengthOf(params ...interface{}) int {
+	return len(params) - 1 // wtf
 }
 
 func FirstOf(opts ...string) string {

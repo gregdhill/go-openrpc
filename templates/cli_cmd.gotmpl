@@ -18,22 +18,33 @@ limitations under the License.
 package cmd
 
 import (
+    "errors"
   "fmt"
+  "log"
   "os"
   "github.com/spf13/cobra"
 
+  "net/http"
+  "io/ioutil"
+  "bytes"
+
   homedir "github.com/mitchellh/go-homedir"
   "github.com/spf13/viper"
+  rpct "github.com/gregdhill/go-openrpc/rpc"
+  "encoding/json"
 
 )
 
 
 var cfgFile string
+var rpcAddr string
 
+
+// {{ .Info.Title }} CLI
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-  Use:   "$ profit",
+  Use:   "FIXME",
   Short: "A brief description of your application",
   Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
@@ -45,6 +56,128 @@ to quickly create a Cobra application.`,
   // has an action associated with it:
   //	Run: func(cmd *cobra.Command, args []string) { },
 }
+
+var errJSONRPC = errors.New("json rpc did return error")
+func makeJSONRPCRequest(name string, params []byte) ([]byte, error) {
+
+            reqBody := rpct.RPCRequest{
+                JSONRPC: "2.0",
+                Method: name,
+                Params: params,
+                ID: 1, // TODO
+            }
+
+            reqBod, err := json.Marshal(reqBody)
+            if err != nil {
+                return nil, err
+            }
+
+            req, err := http.NewRequest("POST", rpcAddr, bytes.NewBuffer(reqBod))
+            if err != nil {
+                return nil, err
+            }
+            req.Header.Set("Content-Type", "application/json")
+
+            client := &http.Client{}
+
+            resp, err := client.Do(req)
+            if err != nil {
+                return nil, err
+            }
+            defer resp.Body.Close() 
+
+            body, _ := ioutil.ReadAll(resp.Body)
+            
+            if resp.StatusCode != 200 {
+                err = errors.New("request errored")
+                return body, err
+            }
+
+            errResponse := rpct.RPCErrorResponse{}
+            err = json.Unmarshal(body, &errResponse)
+            if err != nil {
+                return body, err
+            }
+            if errResponse.Error != nil {
+                // Did get error response from server.
+                return body, errJSONRPC
+            }
+
+            return body, nil
+}
+
+func handleJSONRPCResponse(body []byte, err error) {
+    fmt.Println(string(body))
+    if err == nil {
+        os.Exit(0)
+    }
+    if err == errJSONRPC {
+        os.Exit(1)
+    } 
+    os.Exit(2)
+}
+
+{{- range .Methods }}
+
+{{ $this := . }}
+
+var {{ .Name | camelCase | lowerFirst }}Cmd = &cobra.Command{
+    Use: "{{.Name}}",
+    Short: "{{.Summary}}",
+    Long: `{{.Description}}
+
+Params:
+- TODO 
+
+
+Returns:
+- TODO  
+    
+{{- if ne .ExternalDocs.URL ""}}
+
+For more information see {{- printf "%s" .ExternalDocs.Description }}: {{- printf "%s" .ExternalDocs.URL }}
+{{- end}}
+    `,
+    Run: func(cmd *cobra.Command, args []string) {
+
+        if {{ .Deprecated }} {
+            log.Println("WARNING: This method ({{.Name}}) is deprecated. Use at your own risk.")
+        }
+
+        {{- $paramsLength := .Params | lengthOf }}
+        // len params: {{ $paramsLength }}
+    /*
+
+        {{ range .Params }} 
+        {{ . }}
+        {{ end }}
+
+    */
+        if len(args) != {{$paramsLength}} {
+            log.Fatalf("wrong number of arguments, want: %d, got: %d", {{$paramsLength}}, len(args))
+        }
+
+        paramsArrayT := []interface{}{}
+        
+        if len(args) == 0 {
+            paramsArrayBytes, err := json.Marshal(paramsArrayT)
+            if err != nil {
+                log.Fatalln(err)
+            }
+
+            body, err := makeJSONRPCRequest("{{.Name}}", paramsArrayBytes)
+            handleJSONRPCResponse(body, err)
+        }
+
+        for i, a := range args {
+            fmt.Println("arg:", "i=", i, "val=", a)
+        }
+    },
+}
+
+{{- end }}
+
+
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -62,12 +195,17 @@ func init() {
   // Cobra supports persistent flags, which, if defined here,
   // will be global for your application.
 
-  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.pooper.yaml)")
+  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.FIXME.yaml)")
+  rootCmd.PersistentFlags().StringVar(&rpcAddr, "addr", "http://localhost:8545", "Address for JSON-RPC HTTP calls")
 
 
   // Cobra also supports local flags, which will only run
   // when this action is called directly.
   rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+{{- range .Methods }}
+  rootCmd.AddCommand({{.Name | camelCase | lowerFirst }}Cmd)
+{{- end }}
 }
 
 
@@ -84,9 +222,9 @@ func initConfig() {
       os.Exit(1)
     }
 
-    // Search config in home directory with name ".pooper" (without extension).
+    // Search config in home directory with name ".FIXME" (without extension).
     viper.AddConfigPath(home)
-    viper.SetConfigName(".pooper")
+    viper.SetConfigName(".FIXME")
   }
 
   viper.AutomaticEnv() // read in environment variables that match

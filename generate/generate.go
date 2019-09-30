@@ -59,6 +59,8 @@ type object struct {
 
 func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 	return template.FuncMap{
+		"lengthOf":           util.LengthOf,
+		"unsnakeCase":        util.UnsnakeCase,
 		"camelCase":          util.CamelCase,
 		"lowerFirst":         util.LowerFirst,
 		"maybeMethodComment": maybeMethodComment,
