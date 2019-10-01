@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/gobuffalo/packr/v2"
 	"github.com/gregdhill/go-openrpc/types"
 	"github.com/gregdhill/go-openrpc/util"
+	"github.com/imdario/mergo"
 )
 
 const (
@@ -37,7 +39,12 @@ func schemaAsJSONPretty(s spec.Schema) string {
 	b = bytes.ReplaceAll(b, []byte("{"), []byte(""))
 	b = bytes.ReplaceAll(b, []byte("}"), []byte(""))
 	b = bytes.ReplaceAll(b, []byte(`"`), []byte(""))
-	ss := string(b)
+	b = bytes.ReplaceAll(b, []byte(`$ref: #`), []byte(""))
+
+	// Remove empty JSON $refs
+	reg := regexp.MustCompile(`^\s*\$ref.*$/mg`)
+	ss := reg.ReplaceAllString(string(b), "")
+
 	return ss
 }
 
@@ -64,33 +71,43 @@ func derefSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 		sch = derefSchemaRecurse(cts, sch)
 	}
 	for i := range sch.OneOf {
-		desc := sch.OneOf[i].Description
 		got := derefSchemaRecurse(cts, sch.OneOf[i])
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.OneOf[i]); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.OneOf[i] = got
 	}
 	for i := range sch.AnyOf {
-		desc := sch.AnyOf[i].Description
 		got := derefSchemaRecurse(cts, sch.AnyOf[i])
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.AnyOf[i]); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.AnyOf[i] = got
 	}
 	for i := range sch.AllOf {
-		desc := sch.AllOf[i].Description
 		got := derefSchemaRecurse(cts, sch.AllOf[i])
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.AllOf[i]); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.AllOf[i] = got
 	}
 	for k, _ := range sch.Properties {
-		desc := sch.Properties[k].Description
 		got := derefSchemaRecurse(cts, sch.Properties[k])
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.Properties[k]); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.Properties[k] = got
 	}
 	for k, _ := range sch.PatternProperties {
-		desc := sch.PatternProperties[k].Description
 		got := derefSchemaRecurse(cts, sch.PatternProperties[k])
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.PatternProperties[k]); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.PatternProperties[k] = got
 	}
 	if sch.Items == nil {
@@ -98,16 +115,20 @@ func derefSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 	}
 	if sch.Items.Len() > 1 {
 		for i := range sch.Items.Schemas {
-			desc := sch.Items.Schemas[i].Description
 			got := derefSchemaRecurse(cts, sch.Items.Schemas[i])
-			got.Description = desc
+			if err := mergo.Merge(&got, sch.Items.Schemas[i]); err != nil {
+				panic(err.Error())
+			}
+			got.Schema = ""
 			sch.Items.Schemas[i] = got
 		}
 	} else {
 		// Is schema
-		desc := sch.Items.Schema.Description
 		got := derefSchemaRecurse(cts, *sch.Items.Schema)
-		got.Description = desc
+		if err := mergo.Merge(&got, sch.Items.Schema); err != nil {
+			panic(err.Error())
+		}
+		got.Schema = ""
 		sch.Items.Schema = &got
 	}
 
