@@ -194,14 +194,14 @@ Params: {{ if eq (len .Params) 0 }}<NONE>
 {{- $d := lookupContentDescriptor $components $element }}
 
 - ({{$index}}):{{if $d.Required }} [Required] {{end}}<{{ $d.Name }}>
-{{ deepPrintSchemaAsJSONPretty $components $d.Schema | sanitizeBackticks }}
+{{ derefSchema $components $element.Schema | schemaAsJSONPretty | sanitizeBackticks }}
 
 {{- end }}
 {{ end -}}
 
 Returns:
 {{- $r := lookupContentDescriptor $components .Result }}
-{{ deepPrintSchemaAsJSONPretty $components $r.Schema | sanitizeBackticks }}
+{{ derefSchema $components $r.Schema | schemaAsJSONPretty | sanitizeBackticks }}
 
 {{- if ne .ExternalDocs.URL ""}}
 

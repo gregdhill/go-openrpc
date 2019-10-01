@@ -55,37 +55,38 @@ func schemaHazRef(sch spec.Schema) bool {
 	return sch.Ref.String() != ""
 }
 
-func fillSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
+func derefSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 	if schemaHazRef(sch) {
 		sch = getSchemaFromRef(cts, sch.Ref)
+		sch = derefSchemaRecurse(cts, sch)
 	}
 	for i := range sch.OneOf {
 		desc := sch.OneOf[i].Description
-		got := fillSchemaRecurse(cts, sch.OneOf[i])
+		got := derefSchemaRecurse(cts, sch.OneOf[i])
 		got.Description = desc
 		sch.OneOf[i] = got
 	}
 	for i := range sch.AnyOf {
 		desc := sch.AnyOf[i].Description
-		got := fillSchemaRecurse(cts, sch.AnyOf[i])
+		got := derefSchemaRecurse(cts, sch.AnyOf[i])
 		got.Description = desc
 		sch.AnyOf[i] = got
 	}
 	for i := range sch.AllOf {
 		desc := sch.AllOf[i].Description
-		got := fillSchemaRecurse(cts, sch.AllOf[i])
+		got := derefSchemaRecurse(cts, sch.AllOf[i])
 		got.Description = desc
 		sch.AllOf[i] = got
 	}
 	for k, _ := range sch.Properties {
 		desc := sch.Properties[k].Description
-		got := fillSchemaRecurse(cts, sch.Properties[k])
+		got := derefSchemaRecurse(cts, sch.Properties[k])
 		got.Description = desc
 		sch.Properties[k] = got
 	}
 	for k, _ := range sch.PatternProperties {
 		desc := sch.PatternProperties[k].Description
-		got := fillSchemaRecurse(cts, sch.PatternProperties[k])
+		got := derefSchemaRecurse(cts, sch.PatternProperties[k])
 		got.Description = desc
 		sch.PatternProperties[k] = got
 	}
@@ -95,25 +96,19 @@ func fillSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 	if sch.Items.Len() > 1 {
 		for i := range sch.Items.Schemas {
 			desc := sch.Items.Schemas[i].Description
-			got := fillSchemaRecurse(cts, sch.Items.Schemas[i])
+			got := derefSchemaRecurse(cts, sch.Items.Schemas[i])
 			got.Description = desc
 			sch.Items.Schemas[i] = got
 		}
 	} else {
 		// Is schema
 		desc := sch.Items.Schema.Description
-		got := fillSchemaRecurse(cts, *sch.Items.Schema)
+		got := derefSchemaRecurse(cts, *sch.Items.Schema)
 		got.Description = desc
 		sch.Items.Schema = &got
 	}
 
 	return sch
-}
-
-func deepPrintSchema(cts *types.Components, sch spec.Schema) string {
-	sch = fillSchemaRecurse(cts, sch)
-	out := schemaAsJSONPretty(sch)
-	return out
 }
 
 func getSchemaFromRef(cmpnts *types.Components, ref spec.Ref) (sch spec.Schema) {
@@ -160,21 +155,14 @@ type object struct {
 
 func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 	return template.FuncMap{
+		"derefSchema": derefSchemaRecurse,
 		"schemaHasRef":       schemaHazRef,
-		"deepPrintSchemaAsJSONPretty": deepPrintSchema,
 		"schemaAsJSONPretty": schemaAsJSONPretty,
-		"nonNil": func(i interface{}) bool {
-			return i != nil
-		},
-		"getSchemaFromRef":        getSchemaFromRef,
 		"lookupContentDescriptor": maybeLookupComponentsContentDescriptor,
-		"basep":                   util.BaseP,
 		"sanitizeBackticks":       util.SanitizeBackticks,
-		"mapGet":                  util.FromMapStringKeys,
 		"slice":                   util.Slice,
 		"inspect":                 util.Inpect,
 		"lengthOf":                util.LengthOf,
-		"unsnakeCase":             util.UnsnakeCase,
 		"camelCase":               util.CamelCase,
 		"lowerFirst":              util.LowerFirst,
 		"maybeMethodComment":      maybeMethodComment,
