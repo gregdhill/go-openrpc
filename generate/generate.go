@@ -160,7 +160,6 @@ func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 		"schemaAsJSONPretty": schemaAsJSONPretty,
 		"lookupContentDescriptor": maybeLookupComponentsContentDescriptor,
 		"sanitizeBackticks":       util.SanitizeBackticks,
-		"slice":                   util.Slice,
 		"inspect":                 util.Inpect,
 		"lengthOf":                util.LengthOf,
 		"camelCase":               util.CamelCase,
