@@ -34,6 +34,7 @@ func schemaAsJSONPretty(s spec.Schema) string {
 	}
 	b = bytes.ReplaceAll(b, []byte("{"), []byte(""))
 	b = bytes.ReplaceAll(b, []byte("}"), []byte(""))
+	b = bytes.ReplaceAll(b, []byte(`"`), []byte(""))
 	ss := string(b)
 	return ss
 }
