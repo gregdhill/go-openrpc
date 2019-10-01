@@ -92,7 +92,7 @@ func fillSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 	if sch.Items == nil {
 		return sch
 	}
-	if sch.Items.Len() > 0 {
+	if sch.Items.Len() > 1 {
 		for i := range sch.Items.Schemas {
 			desc := sch.Items.Schemas[i].Description
 			got := fillSchemaRecurse(cts, sch.Items.Schemas[i])
