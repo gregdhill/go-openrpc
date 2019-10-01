@@ -111,20 +111,8 @@ func fillSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
 }
 
 func deepPrintSchema(cts *types.Components, sch spec.Schema) string {
-	out := ""
-
 	sch = fillSchemaRecurse(cts, sch)
-
-	//for _, a := range sch.OneOf {
-	//	out += deepPrintSchema(cts, a)
-	//}
-	//for _, a := range sch.AnyOf {
-	//	out += deepPrintSchema(cts, a)
-	//}
-	//for _, v := range sch.Properties {
-	//	out += deepPrintSchema(cts, v)
-	//}
-	out += schemaAsJSONPretty(sch)
+	out := schemaAsJSONPretty(sch)
 	return out
 }
 
@@ -133,13 +121,7 @@ func getSchemaFromRef(cmpnts *types.Components, ref spec.Ref) (sch spec.Schema) 
 		return
 	}
 	r := filepath.Base(ref.String())
-	sch = cmpnts.Schemas[r]
-	//sch.Properties["type"].
-	//if strings.Contains(cd.Schema.Ref.String(), "schemas") {
-	//
-	//} else {
-	//	r := filepath.Base(cd.Content.Schema.Ref.String())
-	//}
+	sch = cmpnts.Schemas[r] // Trust parser
 	return
 }
 
