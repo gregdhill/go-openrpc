@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	packr "github.com/gobuffalo/packr/v2"
+	"github.com/gobuffalo/packr/v2"
 	"github.com/gregdhill/go-openrpc/generate"
 	"github.com/gregdhill/go-openrpc/parse"
 	"github.com/gregdhill/go-openrpc/types"
@@ -17,11 +17,13 @@ var (
 	pkgDir   string
 	specFile string
 	cliGen   bool
+	cliCommandName string
 )
 
 func init() {
 	flag.StringVar(&pkgDir, "dir", "rpc", "set the target directory")
 	flag.StringVar(&specFile, "spec", "", "the openrpc compliant spec")
+	flag.StringVar(&cliCommandName, "cli.name", "CHANGEME", "With -cli, names binary program. Default is FIXME.")
 	flag.BoolVar(&cliGen, "cli", false, "Toggle CLI program generation")
 }
 
@@ -63,7 +65,7 @@ func run() error {
 	}
 
 	if cliGen {
-
+		generate.ProgramName = cliCommandName
 		if err = generate.WriteFile(box, "cli", "main", openrpc); err != nil {
 			return err
 		}

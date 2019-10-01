@@ -27,6 +27,8 @@ const (
 	goTmplExt = goExt + "tmpl"
 )
 
+var ProgramName = "CHANGME"
+
 func schemaAsJSONPretty(s spec.Schema) string {
 	b, err := json.MarshalIndent(s, "", "    ")
 	if err != nil {
@@ -149,6 +151,14 @@ func maybeFieldComment(desc string) string {
 	return ""
 }
 
+func getProgramName() string {
+	return ProgramName
+}
+
+func sliceFn(sl []interface{}, i int) interface{} {
+	return sl[i]
+}
+
 type object struct {
 	Name   string
 	Fields *types.FieldMap
@@ -156,12 +166,14 @@ type object struct {
 
 func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 	return template.FuncMap{
-		"derefSchema": derefSchemaRecurse,
-		"schemaHasRef":       schemaHazRef,
-		"schemaAsJSONPretty": schemaAsJSONPretty,
+		"programName":             getProgramName,
+		"derefSchema":             derefSchemaRecurse,
+		"schemaHasRef":            schemaHazRef,
+		"schemaAsJSONPretty":      schemaAsJSONPretty,
 		"lookupContentDescriptor": maybeLookupComponentsContentDescriptor,
 		"sanitizeBackticks":       util.SanitizeBackticks,
 		"inspect":                 util.Inpect,
+		"slice":                   util.Slice,
 		"camelCase":               util.CamelCase,
 		"lowerFirst":              util.LowerFirst,
 		"maybeMethodComment":      maybeMethodComment,

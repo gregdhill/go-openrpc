@@ -41,22 +41,39 @@ import (
 var cfgFile string
 var rpcAddr string
 
-
-// {{ .Info.Title }} CLI
+{{- $cliName := programName }}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-  Use:   "FIXME",
-  Short: "A brief description of your application",
-  Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+  Use:   "{{ $cliName }}",
+  Short: "{{ .Info.Title }} CLI",
+  Long: `This is an auto-generated CLI interface for an Open-RPC compliant API.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Open-RPC Version: {{ .Info.Version }}
+
+Run '{{ $cliName }} completion --help' to learn about auto-auto-completion! It's easy!
+  `,
   // Uncomment the following line if your bare application
   // has an action associated with it:
   //	Run: func(cmd *cobra.Command, args []string) { },
+}
+
+// completionCmd represents the completion command
+var completionCmd = &cobra.Command{
+	Use:   "completion",
+	Short: "Generates bash completion scripts",
+	Long: `To load completion run
+
+. <({{ $cliName }} completion)
+
+To configure your bash shell to load completions for each session add to your bashrc
+
+# ~/.bashrc or ~/.profile
+. <({{ $cliName }} completion)
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+		rootCmd.GenBashCompletion(os.Stdout);
+	},
 }
 
 var errJSONRPC = errors.New("json rpc did return error")
@@ -246,14 +263,21 @@ func init() {
   // Cobra supports persistent flags, which, if defined here,
   // will be global for your application.
 
-  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.FIXME.yaml)")
-  rootCmd.PersistentFlags().StringVar(&rpcAddr, "addr", "http://localhost:8545", "Address for JSON-RPC HTTP calls")
+  {{- $defaultAddr := "http://localhost:8545" }}
+  {{- if gt (len .Servers) 0 }}
+  {{- $serverZ := slice .Servers 0 }}
+  {{- $defaultAddr = $serverZ.URL }}
+  {{- end }}
+
+  rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.{{ $cliName }}.yaml)")
+  rootCmd.PersistentFlags().StringVar(&rpcAddr, "http-addr", "{{ $defaultAddr }}", "Address for JSON-RPC HTTP calls")
 
 
   // Cobra also supports local flags, which will only run
   // when this action is called directly.
   rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
+  rootCmd.AddCommand(completionCmd)
 {{- range .Methods }}
   rootCmd.AddCommand({{.Name | camelCase | lowerFirst }}Cmd)
 {{- end }}
@@ -273,9 +297,9 @@ func initConfig() {
       os.Exit(1)
     }
 
-    // Search config in home directory with name ".FIXME" (without extension).
+    // Search config in home directory with name ".{{ $cliName }}" (without extension).
     viper.AddConfigPath(home)
-    viper.SetConfigName(".FIXME")
+    viper.SetConfigName(".{{ $cliName }}")
   }
 
   viper.AutomaticEnv() // read in environment variables that match
