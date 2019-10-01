@@ -23,12 +23,12 @@ import (
     "errors"
   "fmt"
   "log"
-  "os"
   "github.com/spf13/cobra"
 
   "net/http"
   "io/ioutil"
   "bytes"
+  "os"
 
   homedir "github.com/mitchellh/go-homedir"
   "github.com/spf13/viper"
@@ -65,7 +65,7 @@ func makeJSONRPCRequest(name string, params []byte) ([]byte, error) {
         JSONRPC: "2.0",
         Method: name,
         Params: params,
-        ID: 1, // TODO
+        ID: os.Getpid(), // TODO
     }
 
     reqBod, err := json.Marshal(reqBody)
@@ -177,47 +177,60 @@ func marshalParams(params []string) ([]byte, error) {
     return json.Marshal(paramsMapT)
 }
 
-{{- range .Methods }}
+{{ $components := .Components }}
+{{ range .Methods }}
 
-{{- $paramsLength := .Params | lengthOf }}
+{{ $paramsLength := .Params | lengthOf }}
 
 var {{ .Name | camelCase | lowerFirst }}Cmd = &cobra.Command{
-    Use: "{{.Name}}",
-    Short: "{{.Summary}}",
-    Long: `{{.Description}}
+    Use: "{{ .Name }}",
+    Short: "{{ .Summary }}",
+    Long: `
 
-Params: ({{ $paramsLength }})
-- TODO 
+Params: {{ if eq (len .Params) 0 }}<NONE>
+{{ else}}
 
+{{- range $index, $element := .Params }}
+{{- $d := lookupContentDescriptor $components $element }}
+
+- ({{$index}}):{{if $d.Required }} [Required] {{end}}<{{ $d.Name }}>
+{{- if ($d.Schema | schemaHasRef) }}
+{{- $ss := getSchemaFromRef $components $d.Schema.Ref }}
+{{- $jss := $ss | schemaAsJSONPretty }}
+{{ indent 4 $jss }}
+{{- else }}
+{{ $d.Schema | schemaAsJSONPretty }}
+{{- end }}
+
+{{- end }}
+{{ end -}}
 
 Returns:
-- TODO  
-    
+{{- $r := lookupContentDescriptor $components .Result }}
+{{ deepPrintSchemaAsJSONPretty $components $r.Schema | sanitizeBackticks }}
+---
+{{- if ($r.Schema | schemaHasRef) }}
+{{- $rs := getSchemaFromRef $components $r.Schema.Ref }}
+{{- $jrs := $rs | schemaAsJSONPretty }}
+{{ indent 4 $jrs }}
+{{- else }}
+{{ $r.Schema | schemaAsJSONPretty | sanitizeBackticks }}
+{{- end }}
+
 {{- if ne .ExternalDocs.URL ""}}
 
 For more information see {{- printf "%s" .ExternalDocs.Description }}: {{- printf "%s" .ExternalDocs.URL }}
 {{- end}}
     `,
+    {{if .Deprecated -}}
+    Deprecated: "DEPRECATED: Use at your own risk.",
+    PreRun: func(cmd *cobra.Command, args []string) {
+        log.Println("WARNING: This method ({{.Name}}) is deprecated. Use at your own risk.")
+    },
+    {{- end }}
     Run: func(cmd *cobra.Command, args []string) {
 
-        if {{ .Deprecated }} {
-            log.Println("WARNING: This method ({{.Name}}) is deprecated. Use at your own risk.")
-        }
-
         // len params: {{ $paramsLength }}
-    /*
-
-        {{ range .Params }} 
-        {{ . }}
-        {{ end }}
-
-    */
-    /*
-        if len(args) != {{$paramsLength}} {
-            log.Fatalf("wrong number of arguments, want: %d, got: %d", {{$paramsLength}}, len(args))
-        }
-    */
-
         params, err := marshalParams(args)
         if err != nil {
             log.Fatalln(err)
@@ -286,4 +299,3 @@ func initConfig() {
     fmt.Println("Using config file:", viper.ConfigFileUsed())
   }
 }
-

@@ -2,6 +2,7 @@ package generate
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -9,10 +10,12 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
-	packr "github.com/gobuffalo/packr/v2"
+	"github.com/go-openapi/spec"
+	"github.com/gobuffalo/packr/v2"
 	"github.com/gregdhill/go-openrpc/types"
 	"github.com/gregdhill/go-openrpc/util"
 )
@@ -23,6 +26,122 @@ const (
 	goExt     = "go"
 	goTmplExt = goExt + "tmpl"
 )
+
+func schemaAsJSONPretty(s spec.Schema) string {
+	b, err := json.MarshalIndent(s, "", "    ")
+	if err != nil {
+		return ""
+	}
+	b = bytes.ReplaceAll(b, []byte("{"), []byte(""))
+	b = bytes.ReplaceAll(b, []byte("}"), []byte(""))
+	ss := string(b)
+	return ss
+}
+
+func maybeLookupComponentsContentDescriptor(cmpnts *types.Components, cd *types.ContentDescriptor) (rootCD *types.ContentDescriptor, err error) {
+	rootCD = cd
+	if cd == nil || cmpnts == nil {
+		return
+	}
+	if strings.Contains(cd.Schema.Ref.String(), "contentDescriptors") {
+		r := filepath.Base(cd.Schema.Ref.String())
+		rootCD = cmpnts.ContentDescriptors[r]
+		return
+	}
+	return
+}
+
+func schemaHazRef(sch spec.Schema) bool {
+	return sch.Ref.String() != ""
+}
+
+func fillSchemaRecurse(cts *types.Components, sch spec.Schema) spec.Schema {
+	if schemaHazRef(sch) {
+		sch = getSchemaFromRef(cts, sch.Ref)
+	}
+	for i := range sch.OneOf {
+		desc := sch.OneOf[i].Description
+		got := fillSchemaRecurse(cts, sch.OneOf[i])
+		got.Description = desc
+		sch.OneOf[i] = got
+	}
+	for i := range sch.AnyOf {
+		desc := sch.AnyOf[i].Description
+		got := fillSchemaRecurse(cts, sch.AnyOf[i])
+		got.Description = desc
+		sch.AnyOf[i] = got
+	}
+	for i := range sch.AllOf {
+		desc := sch.AllOf[i].Description
+		got := fillSchemaRecurse(cts, sch.AllOf[i])
+		got.Description = desc
+		sch.AllOf[i] = got
+	}
+	for k, _ := range sch.Properties {
+		desc := sch.Properties[k].Description
+		got := fillSchemaRecurse(cts, sch.Properties[k])
+		got.Description = desc
+		sch.Properties[k] = got
+	}
+	for k, _ := range sch.PatternProperties {
+		desc := sch.PatternProperties[k].Description
+		got := fillSchemaRecurse(cts, sch.PatternProperties[k])
+		got.Description = desc
+		sch.PatternProperties[k] = got
+	}
+	if sch.Items == nil {
+		return sch
+	}
+	if sch.Items.Len() > 0 {
+		for i := range sch.Items.Schemas {
+			desc := sch.Items.Schemas[i].Description
+			got := fillSchemaRecurse(cts, sch.Items.Schemas[i])
+			got.Description = desc
+			sch.Items.Schemas[i] = got
+		}
+	} else {
+		// Is schema
+		desc := sch.Items.Schema.Description
+		got := fillSchemaRecurse(cts, *sch.Items.Schema)
+		got.Description = desc
+		sch.Items.Schema = &got
+	}
+
+	return sch
+}
+
+func deepPrintSchema(cts *types.Components, sch spec.Schema) string {
+	out := ""
+
+	sch = fillSchemaRecurse(cts, sch)
+
+	//for _, a := range sch.OneOf {
+	//	out += deepPrintSchema(cts, a)
+	//}
+	//for _, a := range sch.AnyOf {
+	//	out += deepPrintSchema(cts, a)
+	//}
+	//for _, v := range sch.Properties {
+	//	out += deepPrintSchema(cts, v)
+	//}
+	out += schemaAsJSONPretty(sch)
+	return out
+}
+
+func getSchemaFromRef(cmpnts *types.Components, ref spec.Ref) (sch spec.Schema) {
+	if cmpnts == nil || ref.String() == "" {
+		return
+	}
+	r := filepath.Base(ref.String())
+	sch = cmpnts.Schemas[r]
+	//sch.Properties["type"].
+	//if strings.Contains(cd.Schema.Ref.String(), "schemas") {
+	//
+	//} else {
+	//	r := filepath.Base(cd.Content.Schema.Ref.String())
+	//}
+	return
+}
 
 func maybeMethodParams(method types.Method) string {
 	if len(method.Params) > 0 {
@@ -59,14 +178,27 @@ type object struct {
 
 func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 	return template.FuncMap{
-		"lengthOf":           util.LengthOf,
-		"unsnakeCase":        util.UnsnakeCase,
-		"camelCase":          util.CamelCase,
-		"lowerFirst":         util.LowerFirst,
-		"maybeMethodComment": maybeMethodComment,
-		"maybeMethodParams":  maybeMethodParams,
-		"maybeMethodResult":  maybeMethodResult,
-		"maybeFieldComment":  maybeFieldComment,
+		"schemaHasRef":       schemaHazRef,
+		"deepPrintSchemaAsJSONPretty": deepPrintSchema,
+		"schemaAsJSONPretty": schemaAsJSONPretty,
+		"nonNil": func(i interface{}) bool {
+			return i != nil
+		},
+		"getSchemaFromRef":        getSchemaFromRef,
+		"lookupContentDescriptor": maybeLookupComponentsContentDescriptor,
+		"basep":                   util.BaseP,
+		"sanitizeBackticks":       util.SanitizeBackticks,
+		"mapGet":                  util.FromMapStringKeys,
+		"slice":                   util.Slice,
+		"inspect":                 util.Inpect,
+		"lengthOf":                util.LengthOf,
+		"unsnakeCase":             util.UnsnakeCase,
+		"camelCase":               util.CamelCase,
+		"lowerFirst":              util.LowerFirst,
+		"maybeMethodComment":      maybeMethodComment,
+		"maybeMethodParams":       maybeMethodParams,
+		"maybeMethodResult":       maybeMethodResult,
+		"maybeFieldComment":       maybeFieldComment,
 		"getObjects": func(om *types.ObjectMap) []object {
 			keys := om.GetKeys()
 			objects := make([]object, 0, len(keys))

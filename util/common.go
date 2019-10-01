@@ -1,9 +1,38 @@
 package util
 
 import (
+	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/davecgh/go-spew/spew"
 )
+
+func BaseP(s string) string {
+	return filepath.Base(s)
+}
+
+func SanitizeBackticks(s string) string {
+	reg, err := regexp.Compile("`")
+	if err != nil {
+		panic(err.Error())
+	}
+	s = reg.ReplaceAllString(s, "'")
+	return s
+}
+
+func FromMapStringKeys(m map[string]interface{}, key string) interface{} {
+	return m[key]
+}
+
+func Slice(val []interface{}, index int) interface{} {
+	return val[index]
+}
+
+func Inpect(val interface{}) string {
+	return spew.Sdump(val)
+}
 
 func UnsnakeCase(name string) string {
 	return strings.Replace(name, "_", "", -1)
