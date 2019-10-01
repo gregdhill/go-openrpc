@@ -180,7 +180,7 @@ func marshalParams(params []string) ([]byte, error) {
 {{ $components := .Components }}
 {{ range .Methods }}
 
-{{ $paramsLength := .Params | lengthOf }}
+{{ $paramsLength := (len .Params) }}
 
 var {{ .Name | camelCase | lowerFirst }}Cmd = &cobra.Command{
     Use: "{{ .Name }}",

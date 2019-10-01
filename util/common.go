@@ -44,10 +44,6 @@ func LowerFirst(name string) string {
 	return ""
 }
 
-func LengthOf(params ...interface{}) int {
-	return len(params) - 1 // wtf
-}
-
 func FirstOf(opts ...string) string {
 	for _, opt := range opts {
 		if opt != "" {

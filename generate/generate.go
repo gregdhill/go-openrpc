@@ -161,7 +161,6 @@ func funcMap(openrpc *types.OpenRPCSpec1) template.FuncMap {
 		"lookupContentDescriptor": maybeLookupComponentsContentDescriptor,
 		"sanitizeBackticks":       util.SanitizeBackticks,
 		"inspect":                 util.Inpect,
-		"lengthOf":                util.LengthOf,
 		"camelCase":               util.CamelCase,
 		"lowerFirst":              util.LowerFirst,
 		"maybeMethodComment":      maybeMethodComment,
