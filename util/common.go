@@ -1,9 +1,29 @@
 package util
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/davecgh/go-spew/spew"
 )
+
+func SanitizeBackticks(s string) string {
+	reg, err := regexp.Compile("`")
+	if err != nil {
+		panic(err.Error())
+	}
+	s = reg.ReplaceAllString(s, "'")
+	return s
+}
+
+func Slice(val []interface{}, index int) interface{} {
+	return val[index]
+}
+
+func Inpect(val interface{}) string {
+	return spew.Sdump(val)
+}
 
 func CamelCase(name string) string {
 	in := strings.Split(name, "_")
