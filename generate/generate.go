@@ -176,10 +176,6 @@ func getProgramName() string {
 	return ProgramName
 }
 
-func sliceFn(sl []interface{}, i int) interface{} {
-	return sl[i]
-}
-
 type object struct {
 	Name   string
 	Fields *types.FieldMap
