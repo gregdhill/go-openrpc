@@ -151,7 +151,7 @@ func marshalParams(params []string) ([]byte, error) {
         if !useArray {
             kv := strings.Split(a, "=")
             if len(kv) != 2 {
-                return errors.New("invalid params, syntax be k=v, got: " + a)
+                return nil, errors.New("invalid params, syntax be k=v, got: " + a)
             }
             key, val = kv[0], kv[1]
         } else {
