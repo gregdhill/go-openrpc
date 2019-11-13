@@ -2,7 +2,7 @@
 
 package main
 
-type Service interface {
+type GoOpenRPCService interface {
 {{- range .Methods }}
 {{- $name := .Name | camelCase }}
 {{- $params := (maybeMethodParams .) }}

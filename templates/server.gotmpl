@@ -106,10 +106,10 @@ func NewRPCError(code int, msg string) *RPCError {
 }
 
 type Server struct {
-	service Service
+	service GoOpenRPCService
 }
 
-func NewServer(rpc Service) *Server {
+func NewServer(rpc GoOpenRPCService) *Server {
 	return &Server{rpc}
 }
 
